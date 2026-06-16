@@ -13,6 +13,7 @@ and a RAG chatbot that actually knows **why** a stock moved on a given day.*
 ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white)
 ![yfinance](https://img.shields.io/badge/yfinance-Yahoo!-6001D2)
 ![Finnhub](https://img.shields.io/badge/Finnhub-news-1DB954)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Not Financial Advice](https://img.shields.io/badge/⚠️-Not%20Financial%20Advice-red)
 
 </div>
@@ -40,6 +41,19 @@ then pulls the **actual news from that day** to explain it.
 | 📊 | **Chart** | TradingView-style candlesticks. Timeframes **45M · 3h · 1D · 1W**, single or **2×2 grid**. Indicators: SMA, EMA, Bollinger, Volume, RSI, MACD. |
 | 🏦 | **Fundamentals** | Valuation, profitability, financial health & dividends · revenue/income trend · full income / balance / cash-flow statements. |
 | 💬 | **Chat** | Hybrid **RAG + tool-calling** chatbot. Handles live numbers, news/sentiment, and **date-specific** questions — with citations. |
+
+---
+
+## 📸 Screenshots
+
+> _Add your own captures to `assets/` (filenames below) and they'll appear here.
+> On macOS: **Cmd+Shift+4**, select the area, then move the PNG into `assets/`._
+
+| ⭐ Watchlist | 📊 Chart |
+|:---:|:---:|
+| ![Watchlist](assets/watchlist.png) | ![Chart](assets/chart.png) |
+| 🏦 **Fundamentals** | 💬 **Chat** |
+| ![Fundamentals](assets/fundamentals.png) | ![Chat](assets/chat.png) |
 
 ---
 
@@ -144,6 +158,12 @@ no external vector database required.
 - [ ] "Open in Chart" jump from the watchlist
 - [ ] Streaming chat responses
 - [ ] Peer comparison view
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE) © 2026 Nahathai Wonganawat.
 
 ---
 
