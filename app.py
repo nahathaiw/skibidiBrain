@@ -26,6 +26,7 @@ from views import (
     chart_view,
     chat_view,
     fundamentals_view,
+    monitor_view,
     prediction_view,
     watchlist_view,
 )
@@ -99,12 +100,15 @@ if "messages" not in st.session_state:
 
 # --- Pages (tabs) ---------------------------------------------------------
 
-watchlist_tab, chart_tab, fundamentals_tab, predict_tab, chat_tab = st.tabs(
-    ["⭐ Watchlist", "📊 Chart", "🏦 Fundamentals", "🔮 Predict", "💬 Chat"]
+watchlist_tab, monitor_tab, chart_tab, fundamentals_tab, predict_tab, chat_tab = st.tabs(
+    ["⭐ Watchlist", "🪄 Monitor", "📊 Chart", "🏦 Fundamentals", "🔮 Predict", "💬 Chat"]
 )
 
 with watchlist_tab:
     watchlist_view.render()
+
+with monitor_tab:
+    monitor_view.render()
 
 with chart_tab:
     chart_view.render(default_symbol)

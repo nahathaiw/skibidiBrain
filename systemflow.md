@@ -6,6 +6,40 @@ back. For the static component design, see [systemarchitecture.md](systemarchite
 
 ---
 
+## 🔄 Chat lifecycle (n8n-style node graph)
+
+The chatbot request loop — RAG provides cited context, then the model may loop
+through live tool calls before answering.
+
+```mermaid
+flowchart LR
+    U(["💬 User question"]):::trigger --> RT
+
+    subgraph RAG["🔍 News RAG"]
+        direction TB
+        RT["retrieve<br/>hybrid + rerank"]:::act --> FC["format cited context"]:::data
+    end
+
+    FC --> RC["chat_engine.run_chat<br/>system prompt + context"]:::act
+    RC --> DEC{"model needs<br/>live data?"}:::dec
+    DEC -- "tool_call" --> TL["tool dispatch<br/>price · date · news · prediction"]:::act
+    TL -. "cached 15m" .-> EXT["📈 yfinance / 📰 Finnhub"]:::ext
+    TL --> RC
+    DEC -- "no, final" --> ANS(["✅ Answer + 📰 citations"]):::trigger
+
+    classDef trigger fill:#ff6d5a,stroke:#cc4433,color:#fff;
+    classDef act fill:#eef9f0,stroke:#34a853,color:#333;
+    classDef data fill:#e7f0ff,stroke:#4a90d9,color:#333;
+    classDef dec fill:#fff3cd,stroke:#e0a800,color:#333;
+    classDef ext fill:#f3e8ff,stroke:#8e44ad,color:#333;
+```
+
+> The `tool dispatch → run_chat` arrow is the tool-calling **loop** (up to 5
+> rounds) — the model can chain calls (e.g. confirm a date's price *and* fetch
+> that day's news) before producing the final answer.
+
+---
+
 ## 0. App startup
 
 ```
@@ -17,7 +51,7 @@ streamlit run app.py
         ├─ get_client()         ──cache_resource──▶ OpenAI()           # once
         ├─ get_news_index(tickers) ─cache_resource─▶ retriever.build_index()
         │        └─ fetch news (Yahoo + Finnhub) → embed → BM25 → aliases
-        └─ render tabs: ⭐ Watchlist · 📊 Chart · 🏦 Fundamentals · 💬 Chat
+        └─ render tabs: ⭐ Watchlist · 🪄 Monitor · 📊 Chart · 🏦 Fundamentals · 🔮 Predict · 💬 Chat
 ```
 
 The OpenAI client and news index are cached as **resources**, so they are built
@@ -111,22 +145,47 @@ trading day inside `get_price_on_date`.
 ```
 watchlist_view.render()
    │
-   ├─ Add ticker → watchlist.add(sym) → writes watchlist.json → st.rerun()
-   ├─ Remove (🗑) → watchlist.remove(sym) → writes watchlist.json → st.rerun()
+   ├─ 📋 List selectbox → watchlist.set_active(name) → st.rerun()   (multi-list)
+   ├─ Add ticker → watchlist.add(sym, name) → writes watchlist.json → st.rerun()
+   ├─ Remove (🗑) → watchlist.remove(sym, name) → writes watchlist.json → st.rerun()
    ├─ ↻ Refresh → _quote.clear() (drop 60s cache) → st.rerun()
    │
-   └─ for each ticker:
+   └─ for each ticker in load(active):
         _quote(sym) ──cache_data(60s)──▶ finance_tools.get_stock_price()
                                           └─ yfinance fast_info
         render row: price · 🟢▲/🔴▼ change · day range · remove
 ```
 
-`watchlist.json` is the source of truth; it also seeds the sidebar "Tickers to
-index for news" default, so following a stock auto-includes it in the RAG index.
+`watchlist.json` stores **named lists + an active selection** (`My Watchlist`,
+`Magic Monitor`). The active list also seeds the sidebar "Tickers to index for
+news" default, so following a stock auto-includes it in the RAG index.
 
 ---
 
-## 5. Chart tab
+## 5. Monitor tab (Magic Monitor screener)
+
+```
+monitor_view.render()
+   │  inputs: 📋 list selector + editable tickers + ↻ refresh
+   ▼
+_table(tickers) ──cache_data(5m)──▶ magic_monitor.build_table()
+   │   for each ticker:
+   │     charting.get_ohlc(3h / 1D / 1W)        → per-TF EMA(9/21) signal:
+   │            dir ▲▼ · bars since trigger · Δ% since trigger
+   │     _adx(daily)  → Regime T(≥25)/R(<25)
+   │     _rsi(daily)  → RSI + Ext (OB/OS)
+   │     returns 1D/5D/30D/YTD/1Y
+   │     sectors.get_sector(sym)  → theme/sector
+   ▼
+group rows by Sector (sectors.order_key) → per-group header + styled table
+```
+
+Capped lists (Magic Monitor preset = 25 tickers) keep the 3-timeframe scan within
+Yahoo's rate limits.
+
+---
+
+## 6. Chart tab
 
 ```
 chart_view.render(default_symbol)
@@ -144,7 +203,7 @@ st.plotly_chart(...)        # Single = 1 fig; Grid = 2×2 (1W,1D,3h,45M)
 
 ---
 
-## 6. Fundamentals tab
+## 7. Fundamentals tab
 
 ```
 fundamentals_view.render(default_symbol)
@@ -162,6 +221,26 @@ render: profile header
 
 ---
 
+## 8. Predict tab
+
+```
+prediction_view.render(default_symbol)
+   ▼
+_predict(symbol) ──cache_data(15m)──▶ prediction.get_prediction()
+   │   yfinance history(1y) →
+   │     _adx → regime (Trending ≥25 / Ranging <25)
+   │     recent 5d move → direction
+   │     mean-reversion table → base expected fwd-5d %
+   │     _rsi extreme nudge + multi-timeframe alignment
+   ▼
+render: signal banner (🟢/🔴/⚪) · expected move · strength bar
+      · factor breakdown · ⚠️ experimental / not financial advice
+```
+
+Also exposed to the chatbot as the `get_price_prediction` tool.
+
+---
+
 ## Caching summary
 
 | Cache | Scope | TTL | Why |
@@ -170,8 +249,10 @@ render: profile header
 | `get_news_index` | resource | per ticker set | expensive: fetch + embed + BM25 |
 | `cached_tool_call` | data | 15 min | rate-limit live tool data |
 | `_quote` (watchlist) | data | 60 s | fresh-ish quotes |
+| `_table` (monitor) | data | 5 min | multi-ticker × 3-timeframe scan |
 | `_get_chart_data` | data | 5 min | OHLC fetch |
 | `_get_fundamentals` | data | 1 h | slow-changing |
+| `_predict` | data | 15 min | prediction signal |
 
 Streamlit reruns the entire script on every interaction; caching is what keeps
 that cheap and within API rate limits.

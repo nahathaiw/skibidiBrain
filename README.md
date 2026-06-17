@@ -37,7 +37,8 @@ then pulls the **actual news from that day** to explain it.
 
 | | Tab | What it does |
 |---|-----|--------------|
-| ⭐ | **Watchlist** | Persistent ticker list with live quotes (price · change · day range). Survives restarts and seeds the news index. |
+| ⭐ | **Watchlist** | Multiple named lists (your own + a *Magic Monitor* preset) with live quotes (price · change · day range). Survives restarts and seeds the news index. |
+| 🪄 | **Monitor** | Multi-timeframe screener (**3h / Daily / Weekly**) — trend signal, regime (ADX T/R), RSI, returns — **grouped by sector/theme** (ETF · AI · Cloud · Semiconductors · Biotech · …). |
 | 📊 | **Chart** | TradingView-style candlesticks. Timeframes **45M · 3h · 1D · 1W**, single or **2×2 grid**. Indicators: SMA, EMA, Bollinger, Volume, RSI, MACD. |
 | 🏦 | **Fundamentals** | Valuation, profitability, financial health & dividends · revenue/income trend · full income / balance / cash-flow statements. |
 | 🔮 | **Predict** | Experimental 5-day-forward signal (Bullish/Bearish/Neutral) from a transparent mean-reversion heuristic — ADX regime × recent move, nudged by RSI + multi-timeframe trend. |
@@ -73,14 +74,17 @@ then pulls the **actual news from that day** to explain it.
         ┌──────────────── OpenAI (tool-calling) ─────────┐
         │  get_price_on_date   → real % move that day    │
         │  get_news_on_date    → historical news (Finnhub)│
+        │  get_price_prediction → 5-day signal           │
         │  get_stock_price / company_info / financials … │
         └───────────────────────┬───────────────────────┘
                                 ▼
                   💬 grounded, cited answer
 ```
 
-📖 Deep dives: **[systemflow.md](systemflow.md)** (request flows) ·
-**[systemarchitecture.md](systemarchitecture.md)** (component design)
+📖 Docs: **[systemflow.md](systemflow.md)** (request flows) ·
+**[systemarchitecture.md](systemarchitecture.md)** (component design) ·
+**[RAG.md](RAG.md)** (retrieval deep dive) ·
+**[SRS.md](SRS.md)** / **[URS.md](URS.md)** (requirements)
 
 ---
 
@@ -111,7 +115,8 @@ Set them in `.env` **or** paste them into the sidebar at runtime.
 skibidiBrain/
 ├── app.py                      # entry point: config · sidebar · shared state · tabs
 ├── views/                      # 🖼️ UI — one module per page
-│   ├── watchlist_view.py
+│   ├── watchlist_view.py       #   ⭐ multi-list watchlist + live quotes
+│   ├── monitor_view.py         #   🪄 multi-timeframe screener, sector-grouped
 │   ├── chart_view.py
 │   ├── fundamentals_view.py
 │   ├── prediction_view.py
@@ -123,10 +128,13 @@ skibidiBrain/
 └── services/                   # ⚙️ logic + data
     ├── finance_tools.py        #   yfinance tools + OpenAI tool schemas
     ├── fundamentals.py
-    ├── charting.py
+    ├── charting.py             #   OHLC fetch/resample + Plotly figures
     ├── chat_engine.py          #   system prompt + tool-calling loop
     ├── prediction.py           #   5-day-forward mean-reversion signal
-    └── watchlist.py            #   persistent watchlist
+    ├── magic_monitor.py        #   multi-timeframe screener engine
+    ├── sectors.py              #   sector / theme classification
+    ├── presets.py              #   Magic Monitor preset tickers (from the PDF)
+    └── watchlist.py            #   persistent multi-list watchlist
 ```
 
 **Design rule:** `views/` (UI) → `services/` & `rag/` (logic) → external APIs.

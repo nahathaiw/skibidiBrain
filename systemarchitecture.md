@@ -17,7 +17,7 @@ Dependencies point downward only; lower layers never import `views/` or `app.py`
                 │ dispatches to
 ┌───────────────▼──────────────────────────────────────────────┐
 │  views/        PRESENTATION (Streamlit UI only)               │
-│  watchlist_view · chart_view · fundamentals_view · chat_view  │
+│  watchlist · monitor · chart · fundamentals · predict · chat  │
 └───────┬─────────────────────────────────────────┬────────────┘
         │ call                                     │ call
 ┌───────▼───────────────────────┐   ┌─────────────▼─────────────┐
@@ -26,7 +26,10 @@ Dependencies point downward only; lower layers never import `views/` or `app.py`
 │  fundamentals    (yfinance)    │   │  bm25       (lexical)      │
 │  charting        (yfinance)    │   │  news_finnhub (HTTP)       │
 │  chat_engine     (OpenAI)      │   └─────────────┬─────────────┘
-│  watchlist       (JSON file)   │                 │
+│  prediction      (yfinance)    │                 │
+│  magic_monitor   (yfinance)    │                 │
+│  sectors         (yfinance)    │                 │
+│  presets · watchlist (data)    │                 │
 └───────┬────────────────────────┘                │
         │                                          │
         ▼                  external                ▼
@@ -36,6 +39,59 @@ Dependencies point downward only; lower layers never import `views/` or `app.py`
    └─────────┘        └──────────┘         └────────────┘
 ```
 
+### Visual (n8n-style node graph)
+
+```mermaid
+flowchart LR
+    APP["🧩 app.py<br/>sidebar · state · tabs"]:::root
+
+    subgraph V["🖼️ views · UI"]
+        direction TB
+        WL[watchlist_view]:::view
+        MN[monitor_view]:::view
+        CH[chart_view]:::view
+        FN[fundamentals_view]:::view
+        PR[prediction_view]:::view
+        CB[chat_view]:::view
+    end
+
+    subgraph S["⚙️ services · logic + data"]
+        direction TB
+        FT[finance_tools]:::svc
+        CE[chat_engine]:::svc
+        PD[prediction]:::svc
+        MM[magic_monitor]:::svc
+        SE[sectors]:::svc
+        FU[fundamentals]:::svc
+        CHT[charting]:::svc
+        WS[watchlist]:::svc
+    end
+
+    subgraph R["🔍 rag · retrieval"]
+        direction TB
+        RET[retriever]:::svc
+        BM[bm25]:::svc
+        NF[news_finnhub]:::svc
+    end
+
+    APP --> V
+    V --> S
+    V --> R
+    S --> YF["📈 yfinance / Yahoo"]:::ext
+    S --> OA["🤖 OpenAI"]:::ext
+    R --> YF
+    R --> OA
+    R --> FH["📰 Finnhub"]:::ext
+
+    classDef root fill:#6c5ce7,stroke:#4834d4,color:#fff;
+    classDef view fill:#e7f0ff,stroke:#4a90d9,color:#333;
+    classDef svc fill:#eef9f0,stroke:#34a853,color:#333;
+    classDef ext fill:#fff3cd,stroke:#e0a800,color:#333;
+```
+
+> Dependencies point **downward only**: `app.py` → `views/` → `services/` & `rag/`
+> → external APIs. Lower layers never import upward.
+
 ---
 
 ## 2. Components
@@ -43,7 +99,7 @@ Dependencies point downward only; lower layers never import `views/` or `app.py`
 ### `app.py` — composition root
 - Loads env, sets page config, builds the sidebar (API keys, ticker list).
 - Owns **shared state**: the cached OpenAI client and the cached news index.
-- Creates the four tabs and dispatches each to its `views/` module.
+- Creates the six tabs and dispatches each to its `views/` module.
 - Holds no business logic — pure wiring.
 
 ### `views/` — presentation layer
@@ -53,9 +109,11 @@ view-specific caching. They never call external APIs directly; they go through
 
 | Module | Renders | Depends on |
 |--------|---------|------------|
-| `watchlist_view` | quotes table, add/remove | `services.watchlist`, `services.finance_tools` |
+| `watchlist_view` | multi-list quotes table, add/remove, list selector | `services.watchlist`, `services.finance_tools` |
+| `monitor_view` | sector-grouped MTF screener table | `services.magic_monitor`, `services.sectors`, `services.watchlist` |
 | `chart_view` | candlestick chart(s) | `services.charting` |
 | `fundamentals_view` | metrics + statements | `services.fundamentals` |
+| `prediction_view` | 5-day signal + factor breakdown | `services.prediction` |
 | `chat_view` | chat transcript + input | `rag.retriever`, `services.chat_engine` |
 
 ### `services/` — logic + data access
@@ -65,7 +123,11 @@ view-specific caching. They never call external APIs directly; they go through
 | `fundamentals` | `.info` + statements, scale-aware formatting | yfinance |
 | `charting` | OHLC fetch + resample (45M/3h) + Plotly figure assembly | yfinance, plotly |
 | `chat_engine` | System prompt, tool-calling loop, tool-result caching | OpenAI |
-| `watchlist` | Load/save/add/remove tickers in `watchlist.json` | filesystem |
+| `prediction` | 5-day-forward mean-reversion signal (ADX/RSI/MTF) | yfinance |
+| `magic_monitor` | MTF screener rows (signal/regime/RSI/returns) | yfinance |
+| `sectors` | Sector/theme classification (curated + yfinance) | yfinance |
+| `presets` | Magic Monitor preset tickers (parsed from PDF) | — |
+| `watchlist` | Named multi-lists + active selection in `watchlist.json` | filesystem |
 
 ### `rag/` — retrieval subsystem
 | Module | Responsibility | External |
@@ -148,6 +210,7 @@ cache) and feeds the JSON result back. Tools:
 | `get_historical_performance` | return over a period |
 | `get_price_on_date` | OHLC + % move on a specific date |
 | `get_news_on_date` | Finnhub news around a date |
+| `get_price_prediction` | experimental 5-day-forward signal |
 
 ---
 

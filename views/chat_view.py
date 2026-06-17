@@ -9,6 +9,9 @@ from services import chat_engine
 
 
 def render(client: OpenAI, index):
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])

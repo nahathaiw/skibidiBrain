@@ -13,24 +13,31 @@ def _quote(symbol: str) -> dict:
 
 
 def render():
+    # List selector — choose which watchlist is active (shared app-wide).
+    lists = watchlist.names()
+    chosen = st.selectbox("📋 List", lists, index=0, key="wl_list")
+    if chosen != watchlist.active_name():
+        watchlist.set_active(chosen)
+        st.rerun()
+
     # Add-ticker row.
     c1, c2, c3 = st.columns([4, 1, 1])
     with c1:
         new = st.text_input("Add ticker", key="wl_add",
                             label_visibility="collapsed", placeholder="Add ticker, e.g. TSLA")
     with c2:
-        if st.button("Add", width="stretch"):
+        if st.button("Add", width="stretch", key="wl_add_btn"):
             if new.strip():
-                watchlist.add(new)
+                watchlist.add(new, name=chosen)
                 st.rerun()
     with c3:
-        if st.button("↻ Refresh", width="stretch"):
+        if st.button("↻ Refresh", width="stretch", key="wl_refresh"):
             _quote.clear()
             st.rerun()
 
-    tickers = watchlist.load()
+    tickers = watchlist.load(chosen)
     if not tickers:
-        st.info("Your watchlist is empty. Add a ticker above.")
+        st.info("This list is empty. Add a ticker above.")
         return
 
     # Header row.
@@ -55,7 +62,7 @@ def render():
             r[2].markdown(f"{arrow} {chg:+.2f} ({pct:+.2f}%)")
             r[3].markdown(f"{q['day_low']:,.2f} – {q['day_high']:,.2f}")
         if r[4].button("🗑", key=f"rm_{sym}", help=f"Remove {sym}"):
-            watchlist.remove(sym)
+            watchlist.remove(sym, name=chosen)
             st.rerun()
 
     st.caption("Quotes cached ~60s · prices are delayed. Not financial advice.")
