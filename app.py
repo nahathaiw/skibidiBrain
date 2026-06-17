@@ -22,7 +22,13 @@ from openai import OpenAI
 
 from rag import news_finnhub, retriever
 from services import watchlist
-from views import chart_view, chat_view, fundamentals_view, watchlist_view
+from views import (
+    chart_view,
+    chat_view,
+    fundamentals_view,
+    prediction_view,
+    watchlist_view,
+)
 
 load_dotenv()
 
@@ -93,8 +99,8 @@ if "messages" not in st.session_state:
 
 # --- Pages (tabs) ---------------------------------------------------------
 
-watchlist_tab, chart_tab, fundamentals_tab, chat_tab = st.tabs(
-    ["⭐ Watchlist", "📊 Chart", "🏦 Fundamentals", "💬 Chat"]
+watchlist_tab, chart_tab, fundamentals_tab, predict_tab, chat_tab = st.tabs(
+    ["⭐ Watchlist", "📊 Chart", "🏦 Fundamentals", "🔮 Predict", "💬 Chat"]
 )
 
 with watchlist_tab:
@@ -105,6 +111,9 @@ with chart_tab:
 
 with fundamentals_tab:
     fundamentals_view.render(default_symbol)
+
+with predict_tab:
+    prediction_view.render(default_symbol)
 
 with chat_tab:
     chat_view.render(client, index)

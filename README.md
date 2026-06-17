@@ -40,7 +40,8 @@ then pulls the **actual news from that day** to explain it.
 | ⭐ | **Watchlist** | Persistent ticker list with live quotes (price · change · day range). Survives restarts and seeds the news index. |
 | 📊 | **Chart** | TradingView-style candlesticks. Timeframes **45M · 3h · 1D · 1W**, single or **2×2 grid**. Indicators: SMA, EMA, Bollinger, Volume, RSI, MACD. |
 | 🏦 | **Fundamentals** | Valuation, profitability, financial health & dividends · revenue/income trend · full income / balance / cash-flow statements. |
-| 💬 | **Chat** | Hybrid **RAG + tool-calling** chatbot. Handles live numbers, news/sentiment, and **date-specific** questions — with citations. |
+| 🔮 | **Predict** | Experimental 5-day-forward signal (Bullish/Bearish/Neutral) from a transparent mean-reversion heuristic — ADX regime × recent move, nudged by RSI + multi-timeframe trend. |
+| 💬 | **Chat** | Hybrid **RAG + tool-calling** chatbot. Handles live numbers, news/sentiment, **date-specific**, and **forecast** questions — with citations. |
 
 ---
 
@@ -113,6 +114,7 @@ skibidiBrain/
 │   ├── watchlist_view.py
 │   ├── chart_view.py
 │   ├── fundamentals_view.py
+│   ├── prediction_view.py
 │   └── chat_view.py
 ├── rag/                        # 🔍 retrieval
 │   ├── retriever.py            #   hybrid pipeline: BM25 + cosine + rerank
@@ -123,6 +125,7 @@ skibidiBrain/
     ├── fundamentals.py
     ├── charting.py
     ├── chat_engine.py          #   system prompt + tool-calling loop
+    ├── prediction.py           #   5-day-forward mean-reversion signal
     └── watchlist.py            #   persistent watchlist
 ```
 

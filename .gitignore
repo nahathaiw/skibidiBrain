@@ -7,3 +7,6 @@ __pycache__/
 
 # Local-only Streamlit config (hardcoded port would conflict on Streamlit Cloud)
 .streamlit/config.toml
+
+# Prediction research datasets (large binaries, regenerable)
+prediction/*.pkl

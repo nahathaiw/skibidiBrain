@@ -32,6 +32,9 @@ on items on or near that date; ignore unrelated ones.
 - If get_news_on_date returns configured=false or no articles, say so plainly (e.g. \
 "I don't have news from that day") and explain only what the price data shows. Be honest.
 - For general news/sentiment questions, use the NEWS CONTEXT and cite sources as [1], [2].
+- For prediction/forecast questions ("will X go up", "outlook next week"), call \
+get_price_prediction and report the signal + expected move, but ALWAYS flag it as an \
+experimental, in-sample heuristic and NOT financial advice.
 - Be concise. Use bullet points and tables where helpful.
 - End any answer involving a buy/sell/hold judgment with: "This is not financial advice."
 """

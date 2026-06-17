@@ -12,6 +12,8 @@ import yfinance as yf
 
 from rag import news_finnhub
 
+from . import prediction
+
 
 # yfinance hits Yahoo's servers, which rate-limit. Cache for a short window so
 # repeated questions in a session don't re-fetch. (Streamlit caching lives in
@@ -187,6 +189,11 @@ def get_news_on_date(symbol: str, date: str, window_days: int = 3) -> dict:
     }
 
 
+def get_price_prediction(symbol: str) -> dict:
+    """Experimental 5-day-forward signal (mean-reversion heuristic). Not advice."""
+    return prediction.get_prediction(symbol)
+
+
 # --- OpenAI tool schemas --------------------------------------------------
 
 TOOL_FUNCTIONS = {
@@ -196,6 +203,7 @@ TOOL_FUNCTIONS = {
     "get_historical_performance": get_historical_performance,
     "get_price_on_date": get_price_on_date,
     "get_news_on_date": get_news_on_date,
+    "get_price_prediction": get_price_prediction,
 }
 
 TOOL_SCHEMAS = [
@@ -293,6 +301,24 @@ TOOL_SCHEMAS = [
                     },
                 },
                 "required": ["symbol", "date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_price_prediction",
+            "description": (
+                "Experimental 5-day-forward signal (Bullish/Bearish/Neutral) from a "
+                "transparent mean-reversion heuristic: ADX regime x recent direction, "
+                "nudged by RSI and multi-timeframe trend. Use for 'will it go up', "
+                "'forecast', 'next week' questions. ALWAYS state it is experimental and "
+                "not financial advice."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"symbol": {"type": "string"}},
+                "required": ["symbol"],
             },
         },
     },
